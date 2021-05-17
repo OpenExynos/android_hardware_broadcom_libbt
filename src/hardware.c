@@ -231,6 +231,7 @@ static uint8_t bt_sco_i2spcm_param[SCO_I2SPCM_PARAM_SIZE] =
 static const fw_settlement_entry_t fw_settlement_table[] = {
     {"BCM43241", 200},
     {"BCM43341", 100},
+    {"BCM43438", 150},
     {(const char *) NULL, 100}  // Giving the generic fw settlement delay setting.
 };
 
@@ -547,10 +548,53 @@ static uint8_t hw_config_findpatch(char *p_chip_id_str)
 **                  FALSE, otherwise
 **
 *******************************************************************************/
+#include <net/if.h>
+#define PERSIST_BDADDR_PROPERTY         "persist.service.bdroid.bdaddr"
+
+static int str2bd(char *str, char *address)
+{
+    int32_t i = 0;
+    for (i = 0; i < 6; i++) {
+       address[i] = (uint8_t)strtoul(str, &str, 16);
+       str++;
+    }
+    return 0;
+}
+
+static void get_local_mac_addr(void)
+{
+    struct ifreq ifr;
+    int fd;
+    char *pa, *vnd;
+    char bd_addr[256];
+
+    sprintf(ifr.ifr_name, "wlan0");
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    ioctl(fd, SIOCGIFHWADDR, &ifr);
+    close(fd);
+
+    pa = ifr.ifr_ifru.ifru_hwaddr.sa_data;
+    property_get(PERSIST_BDADDR_PROPERTY, bd_addr, NULL);
+    vnd = vnd_local_bd_addr;
+    str2bd(bd_addr, vnd);
+    if(vnd[0] == 0x48 && vnd[1] == 0x5a && vnd[2] == 0x3f)
+        return;
+
+    if(vnd[0] != pa[0]|| vnd[1] != pa[1] || vnd[2] != pa[2]) {
+        memcpy(vnd, pa, BD_ADDR_LEN);
+        vnd[5] = (char)(((int)vnd[5])-1);
+        sprintf(bd_addr, "%02x:%02x:%02x:%02x:%02x:%02x",
+                vnd[0], vnd[1], vnd[2], vnd[3], vnd[4], vnd[5]);
+
+        if (property_set(PERSIST_BDADDR_PROPERTY, (char*)bd_addr) < 0)
+            ALOGE("Failed to set local BDA in prop %s", PERSIST_BDADDR_PROPERTY);
+    }
+}
 static uint8_t hw_config_set_bdaddr(HC_BT_HDR *p_buf)
 {
     uint8_t retval = FALSE;
     uint8_t *p = (uint8_t *) (p_buf + 1);
+    get_local_mac_addr();
 
     ALOGI("Setting local bd addr to %02X:%02X:%02X:%02X:%02X:%02X",
         vnd_local_bd_addr[0], vnd_local_bd_addr[1], vnd_local_bd_addr[2],

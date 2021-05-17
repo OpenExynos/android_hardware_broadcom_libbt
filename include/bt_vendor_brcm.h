@@ -56,7 +56,7 @@
 
 /* Device port name where Bluetooth controller attached */
 #ifndef BLUETOOTH_UART_DEVICE_PORT
-#define BLUETOOTH_UART_DEVICE_PORT      "/dev/ttyO1"    /* maguro */
+#define BLUETOOTH_UART_DEVICE_PORT      "/dev/ttySAC4"    /* samsung */
 #endif
 
 /* Location of firmware patch files */
@@ -65,7 +65,7 @@
 #endif
 
 #ifndef UART_TARGET_BAUD_RATE
-#define UART_TARGET_BAUD_RATE           3000000
+#define UART_TARGET_BAUD_RATE           2000000
 #endif
 
 /* The millisecond delay pauses on HCI transport after firmware patches
